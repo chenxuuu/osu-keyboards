@@ -31,3 +31,6 @@
 # Debug files
 *.dSYM/
 *.su
+
+Project/USB_HID/RVMDK/List
+Project/USB_HID/RVMDK/Obj

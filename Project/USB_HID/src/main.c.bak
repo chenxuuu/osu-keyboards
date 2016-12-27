@@ -1,0 +1,88 @@
+/******************** (C) COPYRIGHT 2013 CEPARK多功能开发学习板********************
+ * 文件名  ：main.c
+ * 描述    ：         
+ * 实验平台：CEPARK多功能开发学习板
+ * 库版本  ：ST3.5.0
+**********************************************************************************/
+#define GLOBALS
+#include "stm32f10x.h"
+#include "usb_lib.h"
+#include "usb_pwr.h"
+#include "stdio.h"	   
+#include "demo.h"
+#include "hw_config.h"
+
+extern void USB_Disconnect_Config(void);
+__IO uint8_t PrevXferComplete = 1;
+
+/****************************************************************************
+* 名    称：void RCC_Configuration(void)
+* 功    能：系统时钟配置为72MHZ， 外设时钟配置
+* 入口参数：无
+* 出口参数：无
+* 说    明：
+* 调用方法：无 
+****************************************************************************/ 
+void RCC_Configuration(void){
+
+  SystemInit();	  
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB, ENABLE);
+  RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
+}
+
+
+/****************************************************************************
+* 名    称：void NVIC_Configuration(void)
+* 功    能：中断源配置
+* 入口参数：无
+* 出口参数：无
+* 说    明：
+* 调用方法：无 
+****************************************************************************/
+void NVIC_Configuration(void)
+{
+  /*  结构声明*/
+  NVIC_InitTypeDef NVIC_InitStructure;
+
+  /* Configure the NVIC Preemption Priority Bits */  
+  /* Configure one bit for preemption priority */
+  /* 优先级组 说明了抢占优先级所用的位数，和子优先级所用的位数  */    
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);	  
+  
+  NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;	    //USB低优先级中断请求
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;			//抢占优先级 1
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;				//子优先级为1
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  NVIC_InitStructure.NVIC_IRQChannel = USB_HP_CAN1_TX_IRQn;			//USB高优先级中断请求
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;			//抢占优先级 1
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;				//子优先级为0
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+ 
+}
+/****************************************************************************
+* 名    称：int main(void)
+* 功    能：主函数
+* 入口参数：无
+* 出口参数：无
+* 说    明：
+* 调用方法：无 
+****************************************************************************/
+int main(void)
+{
+  RCC_Configuration(); 		//设置系统时钟 
+  USB_Disconnect_Config();	//设置USB连接控制线    	   
+  NVIC_Configuration();     //USB通信中断配置
+  USB_Init();				//USB初始化
+  while (1)
+  {	
+    Joystick_Send(LEFT_BUTTON);
+  }
+}
+
+/******************* (C) COPYRIGHT 2011 奋斗STM32 *****END OF FILE****/
