@@ -227,13 +227,14 @@ u8 JoyState(void)
 * Output        : None.
 * Return value  : None.
 *******************************************************************************/
-void Joystick_Send(u8 win_buf,u8 key_buf)
+void Joystick_Send(u8 win_buf,u8 key_buf, u8 key_buf2)
 {
 u8 Mouse_Buffer[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 while(GetEPTxStatus(ENDP1) == EP_TX_VALID);  //check last send is over
 /* prepare buffer to send */
-Mouse_Buffer[0]=win_buf;    
-Mouse_Buffer[2]=key_buf;       
+Mouse_Buffer[0]=win_buf;
+Mouse_Buffer[2]=key_buf;
+Mouse_Buffer[3]=key_buf2;
 /*copy mouse position info in ENDP1 Tx Packet Memory Area*/
 UserToPMABufferCopy(Mouse_Buffer, GetEPTxAddr(ENDP1), 8);
 /* enable endpoint for transmission */

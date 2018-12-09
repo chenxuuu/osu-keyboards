@@ -14,6 +14,7 @@ int led = 1;
 
 extern void USB_Disconnect_Config(void);
 __IO uint8_t PrevXferComplete = 1;
+void solve_key(unsigned char key1,unsigned char key2);
 
 int config_mode = 0, key_bit = 0, key_buff = 0, light_time = 0, ledcount = 0, R, G, B, light_choice = 0,color = 1;
 
@@ -350,59 +351,66 @@ void NVIC_Configuration(void)
 }
 
 
-void IRQHandler(void)   //中断执行函数
+unsigned char irq_key1_buf = 0, irq_key2_buf = 0, irq_key1_temp = 1, irq_key2_temp = 1;
+//buf:key timer, temp: key last is down
+void IRQHandler(void)
 {
-        if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5) && GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8))
+    unsigned char key1 = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5);
+    unsigned char key2 = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8);
+    // key1:
+    if(irq_key1_buf == 0)
+    {
+        if(irq_key1_temp != key1)
         {
-            if(key_buff != 0)
-            {
-                Joystick_Send(0, 0);
-                //light_choice = 0;
-                //light_time = 0;
-                key_buff = 0;
-            }
+            solve_key(key1,key2);
+            irq_key1_buf = 1;
+            irq_key1_temp = key1;
         }
-        else if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5) && !GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8))
+    }
+    else
+    {
+        if(irq_key1_buf < 15)
+            irq_key1_buf ++;
+        else
+            irq_key1_buf = 0;
+    }
+
+    // key2:
+    if(irq_key2_buf == 0)
+    {
+        if(irq_key2_temp != key2)
         {
-            if(key_buff == 1)
-            {
-                Joystick_Send(0, 0x1D);
-                light_choice = 1;
-                light_time = 500;
-                color_change();
-                key_buff = 3;
-            }
-            if(key_buff == 2)
-            {
-                Joystick_Send(0, 0x1B);
-                light_choice = 2;
-                light_time = 500;
-                color_change();
-                key_buff = 3;
-            }
+            solve_key(key1,key2);
+            irq_key2_buf = 1;
+            irq_key2_temp = key2;
         }
-        else if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5))
-        {
-            if(key_buff != 1)
-            {
-                Joystick_Send(0, 0x1B);
-                light_choice = 2;
-                light_time = 500;
-                color_change();
-                key_buff = 1;
-            }
-        }
-        else if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8))
-        {
-            if(key_buff != 2)
-            {
-                Joystick_Send(0, 0x1D);
-                light_choice = 1;
-                light_time = 500;
-                color_change();
-                key_buff = 2;
-            }
-        }
+    }
+    else
+    {
+        if(irq_key2_buf < 15)
+            irq_key2_buf ++;
+        else
+            irq_key2_buf = 0;
+    }
+}
+
+
+void solve_key(unsigned char key1,unsigned char key2)
+{
+    unsigned char key1_buf,key2_buf;
+    if(key1)
+        key1_buf = 0;
+    else
+        key1_buf = 0x1B;
+    if(key2)
+        key2_buf = 0;
+    else
+        key2_buf = 0x1D;
+
+    if(key1_buf == 0)
+        Joystick_Send(0, key2_buf, 0);
+    else
+        Joystick_Send(0, key1_buf, key2_buf);
 }
 
 /****************************************************************************
@@ -457,10 +465,11 @@ int main(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;//GPIO_Mode_IN_FLOATING;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOC, &GPIO_InitStructure);
-    TIM3_Int_Init(99,71);  //中断1us
+    TIM3_Int_Init(99,719);  //中断1ms
     /*
     TIM3_Int_Init(4999,7199);
     ((4999+1)*(7199+1))/7200=5000  10Khz的计数频率，计数到5000为500ms
+		((4999+1)*(7199+1))/72=500000us=500ms  延时500ms
     
     Tout = ( (arr + 1) * (psc + 1) ) / Tclk
     Tclk：TIM3 的输入时钟频率（单位为 Mhz）
